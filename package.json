@@ -1,0 +1,14 @@
+{
+  "name": "ein",
+  "version": "1.0.0",
+  "description": "",
+  "main": "ein.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "",
+  "dependencies": {
+    "console.table": "^0.8.0"
+  }
+}
