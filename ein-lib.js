@@ -1,6 +1,7 @@
 'use strict';
 
 require('console.table');
+const EinCache = require('./ein-cache');
 
 function isString(a) {
 	return (typeof a === "string");
@@ -26,6 +27,7 @@ module.exports = {
 		let unplacedPuzzles = new Set();
 		let placedPieces = new Map();
 		let positionMap = new Map();
+		let cache = new EinCache(1);
 
 		// Pretty print functions.
 		function printPuzzles() {
@@ -242,16 +244,33 @@ module.exports = {
 		}
 
 		function trySet(puzzle, pos, depth, permanent = false) {
+			// Check for cache hits.
+			if (cache.has(puzzle, pos)) return false;
+
 			// 1. check if possible
-			if (!canBePlaced(puzzle, pos)) return false;
+			if (!canBePlaced(puzzle, pos)) {
+				// Cache result.
+				cache.add(puzzle, pos);
+				return false;
+			}
 			if (!permanent && (depth <= 0)) return true;
 
 			// 2. set
 			place(puzzle, pos);
 
+			// Move cache down.
+			cache.down(puzzle, pos);
+
 			// 3. try place next puzzle
 			let result = true;
-			if (depth > 0) result = tryPlaceNextPuzzle(depth);
+			if (depth > 0) {
+				result = tryPlaceNextPuzzle(depth);
+				// Cache result.
+				if (!result) cache.add(puzzle, pos);
+			}
+
+			// Move cache up.
+			cache.up();
 
 			// 4. unset
 			if (!permanent || !result) unplace(puzzle);
@@ -277,7 +296,6 @@ module.exports = {
 			let posesCache = new Map();
 
 			for (let depth = 0; depth < depthMax; depth++) {
-				console.log(depth);
 				// 1. foreach variable
 				for (let puzzle of puzzles) {
 					// 2. foreach value
