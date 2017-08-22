@@ -272,6 +272,11 @@ module.exports = {
 			if (unplacedPuzzles.size <= 0) return true;
 			let placedPuzzles = []; // to keep track of the placed puzzles
 			let puzzles = Array.from(unplacedPuzzles);
+
+			// Local cache of positions for all puzzles.
+			let posesCache = new Map();
+			// for (let puzzle of puzzles) posesCache.set(puzzle, new Set(puzzle.poses));
+
 			// 1. foreach variable
 			for (let puzzle of puzzles) {
 				// 2. foreach value
@@ -287,16 +292,21 @@ module.exports = {
 						if (trueCount > 1) break;
 					}
 					// 4. remember failed value trySet-s for all lower levels
-					else puzzle.poses.delete(pos);
+					else {
+						// Local cache all changed puzzle poses.
+						if (!posesCache.has(puzzle))
+							posesCache.set(puzzle, new Set(puzzle.poses));
+						puzzle.poses.delete(pos);
+					}
 					// If more than one value possible we can skip checking.
 					if (trueCount > 1) continue;
 				}
-				// Reset the possible positions. (TODO: can this be done at the end?)
-				puzzle.poses = new Set(poses);
 				// 5. if no value matches return false
 				if (trueCount < 1) {
 					// Reset all changes because it can't be solved.
 					for (let puzzle of placedPuzzles) unplace(puzzle);
+					// Reset puzzle poses from local cache.
+					for (let [puzzle, poses] of posesCache) puzzle.poses = poses;
 					return false;
 				} else if (trueCount === 1) {
 					// 6. if only one value matches set it
@@ -314,6 +324,8 @@ module.exports = {
 			// Reset all changes if not permanent.
 			if (!permanent) {
 				for (let puzzle of placedPuzzles) unplace(puzzle);
+				// Reset puzzle poses from local cache.
+				for (let [puzzle, poses] of posesCache) puzzle.poses = poses;
 			}
 			return true;
 		}

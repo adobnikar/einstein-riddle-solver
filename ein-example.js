@@ -61,6 +61,8 @@ ein.neighbours('Norwegian', 'blue');
 // the man who smokes Blends has a neighbour who drinks water
 ein.neighbours('Blends', 'water');
 
+console.time("Time");
 ein.solve();
+console.timeEnd("Time");
 
 process.exit(0);
