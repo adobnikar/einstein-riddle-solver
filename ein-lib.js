@@ -260,7 +260,7 @@ module.exports = {
 			return result;
 		}
 
-		function tryPlaceNextPuzzle(depth, permanent = false) {
+		function tryPlaceNextPuzzle(depthMax, permanent = false) {
 			// 1. foreach variable
 			// 2. foreach value
 			// 3. trySet each value
@@ -275,51 +275,54 @@ module.exports = {
 
 			// Local cache of positions for all puzzles.
 			let posesCache = new Map();
-			// for (let puzzle of puzzles) posesCache.set(puzzle, new Set(puzzle.poses));
 
-			// 1. foreach variable
-			for (let puzzle of puzzles) {
-				// 2. foreach value
-				let poses = Array.from(puzzle.poses);
-				let trueCount = 0;
-				let tpos = null;
-				for (let pos of poses) {
-					// 3. trySet each value
-					let result = trySet(puzzle, pos, depth - 1);
-					if (result) {
-						trueCount++;
-						tpos = pos;
-						if (trueCount > 1) break;
+			for (let depth = 0; depth < depthMax; depth++) {
+				console.log(depth);
+				// 1. foreach variable
+				for (let puzzle of puzzles) {
+					// 2. foreach value
+					let poses = Array.from(puzzle.poses);
+					let trueCount = 0;
+					let tpos = null;
+					for (let pos of poses) {
+						// 3. trySet each value
+						let result = trySet(puzzle, pos, depth);
+						if (result) {
+							trueCount++;
+							tpos = pos;
+							if (trueCount > 1) break;
+						}
+						// 4. remember failed value trySet-s for all lower levels
+						else {
+							// Local cache all changed puzzle poses.
+							if (!posesCache.has(puzzle))
+								posesCache.set(puzzle, new Set(puzzle.poses));
+							puzzle.poses.delete(pos);
+						}
+						// If more than one value possible we can skip checking.
+						if (trueCount > 1) continue;
 					}
-					// 4. remember failed value trySet-s for all lower levels
-					else {
-						// Local cache all changed puzzle poses.
-						if (!posesCache.has(puzzle))
-							posesCache.set(puzzle, new Set(puzzle.poses));
-						puzzle.poses.delete(pos);
+					// 5. if no value matches return false
+					if (trueCount < 1) {
+						// Reset all changes because it can't be solved.
+						for (let puzzle of placedPuzzles) unplace(puzzle);
+						// Reset puzzle poses from local cache.
+						for (let [puzzle, poses] of posesCache) puzzle.poses = poses;
+						return false;
+					} else if (trueCount === 1) {
+						// 6. if only one value matches set it
+						let sanityResult = trySet(puzzle, tpos, 0, true);
+						if (permanent) {
+							printPositionMap();
+						}
+						// Sanity check if pre-checked placement fails.
+						if (!sanityResult) throw new Error('This should never happen.');
+						// Keep history of placed puzzles.
+						placedPuzzles.push(puzzle);
 					}
-					// If more than one value possible we can skip checking.
-					if (trueCount > 1) continue;
-				}
-				// 5. if no value matches return false
-				if (trueCount < 1) {
-					// Reset all changes because it can't be solved.
-					for (let puzzle of placedPuzzles) unplace(puzzle);
-					// Reset puzzle poses from local cache.
-					for (let [puzzle, poses] of posesCache) puzzle.poses = poses;
-					return false;
-				} else if (trueCount === 1) {
-					// 6. if only one value matches set it
-					let sanityResult = trySet(puzzle, tpos, 0, true);
-					if (permanent) {
-						printPositionMap();
-					}
-					// Sanity check if pre-checked placement fails.
-					if (!sanityResult) throw new Error('This should never happen.');
-					// Keep history of placed puzzles.
-					placedPuzzles.push(puzzle);
 				}
 			}
+
 			// 7. return true
 			// Reset all changes if not permanent.
 			if (!permanent) {
@@ -354,7 +357,7 @@ module.exports = {
 				puzzle.poses = new Set(posarray);
 			}
 
-			let depth = 0;
+			let depth = 1;
 			let lastUnplacedPuzzlesSize = unplacedPuzzles.size;
 			while (unplacedPuzzles.size > 0) {
 				console.log('Start IDF search with depth ' + depth);
@@ -364,7 +367,7 @@ module.exports = {
 					return;
 				}
 				if (unplacedPuzzles.size < lastUnplacedPuzzlesSize) {
-					depth = 0;
+					depth = 1;
 					lastUnplacedPuzzlesSize = unplacedPuzzles.size;
 				} else depth++;
 			}
